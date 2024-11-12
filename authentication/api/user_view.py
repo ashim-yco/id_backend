@@ -4,7 +4,7 @@ from authentication.api import serializer
 from rest_framework import status
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.hashers import make_password
 from utils.response import res
 
@@ -12,6 +12,7 @@ from utils.response import res
 class UserRegisterView(GenericAPIView):
     queryset = User
     serializer_class = serializer.UserRegistrationSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         user_data = request.data
@@ -52,7 +53,9 @@ class UserRegisterView(GenericAPIView):
 
 
 class UserLoginView(GenericAPIView):
+    queryset =User.objects.all()
     serializer_class = serializer.LoginSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         login_data = request.data
@@ -91,12 +94,47 @@ class AllUsersView(GenericAPIView):
     def get(self, request):
         try:
             all_users = User.objects.all()
-            user_list = list(self.serializer_class(data=all_users, many=True).data)
-            return res(
-                message="Fetched all users!", data=user_list, status=status.HTTP_200_OK
-            )
-        except:
+            user_list = self.serializer_class(all_users, many=True)
+            if user_list:
+                return res(
+                message="Fetched all users!", data=user_list.data, status=status.HTTP_200_OK
+                )
+        except Exception as exep:
             return res(
                 message="Failed to fetch users!",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                errors=str(exep)
             )
+        
+class EditUserDetailView(GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = serializer.UserDetailsSerializer
+
+    def put(self, request):
+        try:
+            user = request.user
+            user_data = User.objects.get(id=user.id)
+            user_details = self.serializer_class(
+                user_data, data=request.data, partial=True
+            )
+            if user_details.is_valid():
+                user_details.save()
+                return res(
+                    message="User updated succesfully!",
+                    data=user_details.validated_data,
+                    status=status.HTTP_202_ACCEPTED
+                )
+            else:
+                return res(
+                    message="User could not be updated!",
+                    errors=user_details.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Exception as exep:
+            return res(
+                    message="User updated succesfully!",
+                    data=user_details.data,
+                    errors=str(exep)
+                )

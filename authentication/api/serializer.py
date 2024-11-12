@@ -11,6 +11,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "username",
             "address",
             "password",
+            'is_staff',
+            'is_superuser',
             "phone",
             "date_of_birth",
         ]
@@ -21,10 +23,11 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
-class UserDetailsSerializer(serializers.Serializer):
+class UserDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
+            "id",
             "full_name",
             "email",
             "username",
@@ -32,3 +35,4 @@ class UserDetailsSerializer(serializers.Serializer):
             "phone",
             "date_of_birth",
         ]
+        read_only_fields = ['id']
